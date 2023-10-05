@@ -21,27 +21,27 @@ resources:
     cpu: 1000m
     memory: 4Gi
 
-livenessProbe:
-  failureThreshold: 3
-  httpGet:
-    path: /
-    port: 8080
-    scheme: HTTP
-  initialDelaySeconds: 40
-  periodSeconds: 30
-  timeoutSeconds: 40
-  successThreshold: 1
+# livenessProbe:
+#   failureThreshold: 3
+#   httpGet:
+#     path: /
+#     port: 8080
+#     scheme: HTTP
+#   initialDelaySeconds: 40
+#   periodSeconds: 30
+#   timeoutSeconds: 40
+#   successThreshold: 1
 
-readinessProbe:
-  failureThreshold: 3
-  httpGet:
-    path: /
-    port: 8080
-    scheme: HTTP
-  initialDelaySeconds: 40
-  periodSeconds: 30
-  timeoutSeconds: 40
-  successThreshold: 2
+# readinessProbe:
+#   failureThreshold: 3
+#   httpGet:
+#     path: /
+#     port: 8080
+#     scheme: HTTP
+#   initialDelaySeconds: 40
+#   periodSeconds: 30
+#   timeoutSeconds: 40
+#   successThreshold: 2
 
 service:
   type: ClusterIP

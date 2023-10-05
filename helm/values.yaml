@@ -1,0 +1,88 @@
+image:
+  pullPolicy: Always
+
+imagePullSecrets:
+  - name: github
+
+replicaCount: 1
+
+autoscaling:
+  enabled: false
+  # minReplicas: 1
+  # maxReplicas: 10
+  # targetCPUUtilizationPercentage: 80
+  # targetMemoryUtilizationPercentage: 120
+
+resources:
+  requests:
+    cpu: 500m
+    memory: 2Gi
+  limits:
+    cpu: 1000m
+    memory: 4Gi
+
+livenessProbe:
+  failureThreshold: 3
+  httpGet:
+    path: /
+    port: 8080
+    scheme: HTTP
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 30
+  successThreshold: 1
+
+readinessProbe:
+  failureThreshold: 3
+  httpGet:
+    path: /
+    port: 8080
+    scheme: HTTP
+  initialDelaySeconds: 30
+  periodSeconds: 30
+  timeoutSeconds: 30
+  successThreshold: 2
+
+service:
+  type: ClusterIP
+  port: 8080
+
+serviceAccount:
+  # Specifies whether a service account should be created
+  create: true
+  # Annotations to add to the service account
+  annotations: {}
+  # The name of the service account to use.
+  # If not set and create is true, a name is generated using the fullname template
+  name: ""
+
+configMap:
+  GSA_DB_NAME: "datausa"
+  GSA_DB_USER: "deploy"
+  GSA_DB_HOST: "104.198.139.117"
+  GSA_DB_PORT: "5432"
+
+secrets:
+  GSA_DB_PW: TEpLcndzWDc5WTg3ZWVxTUdNemdjd0E2bVZyQ3Rp
+
+ingress:
+  enabled: true
+  annotations:
+    cert-manager.io/cluster-issuer: "letsencrypt-prod"
+    acme.cert-manager.io/http01-edit-in-place: "true"
+    ingress.kubernetes.io/ssl-redirect: "true"
+    nginx.org/proxy-connect-timeout: "120s"
+    nginx.org/proxy-read-timeout: "120s"
+    nginx.org/proxy-buffers: "8 16k"
+    nginx.org/proxy-buffer-size: "16k"
+    nginx.org/proxy-busy-buffers-size: "64k"
+    nginx.org/location-snippets: |
+      add_header Access-Control-Allow-Origin *;
+  hosts:
+    - host: geoservice.datausa.io
+      paths:
+        - /
+  tls:
+    - secretName: canon-site-ingress-tls
+      hosts:
+        - geoservice.datausa.io

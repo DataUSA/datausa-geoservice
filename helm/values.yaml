@@ -84,6 +84,6 @@ ingress:
       paths:
         - /
   tls:
-    - secretName: canon-site-ingress-tls
+    - secretName: geoservice-api-ingress-tls
       hosts:
         - geoservice.datausa.io

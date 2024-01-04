@@ -7,11 +7,11 @@ imagePullSecrets:
 replicaCount: 1
 
 autoscaling:
-  enabled: false
-  # minReplicas: 1
-  # maxReplicas: 10
-  # targetCPUUtilizationPercentage: 80
-  # targetMemoryUtilizationPercentage: 120
+  enabled: true
+  minReplicas: 1
+  maxReplicas: 4
+  targetCPUUtilizationPercentage: 80
+  targetMemoryUtilizationPercentage: 120
 
 resources:
   requests:
@@ -56,14 +56,14 @@ serviceAccount:
   # If not set and create is true, a name is generated using the fullname template
   name: ""
 
-configMap:
-  GSA_DB_NAME: "datausa"
-  GSA_DB_USER: "deploy"
-  GSA_DB_HOST: "104.198.139.117"
-  GSA_DB_PORT: "5432"
+# configMap:
+#   GSA_DB_NAME: "datausa"
+#   GSA_DB_USER: "deploy"
+#   GSA_DB_HOST: "104.198.139.117"
+#   GSA_DB_PORT: "5432"
 
-secrets:
-  GSA_DB_PW: TEpLcndzWDc5WTg3ZWVxTUdNemdjd0E2bVZyQ3Rp
+# secrets:
+#   GSA_DB_PW: <BASE64-DATABASE-PASSWORD-STRING>
 
 ingress:
   enabled: true

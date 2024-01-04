@@ -62,7 +62,7 @@ on:
   push:
     branches: [ "main" ]
     paths:
-      - .github/workflows/google-gke-prod.yaml
+      - .github/workflows/google-registry-prod.yaml
       - config/**
       - src/**
 

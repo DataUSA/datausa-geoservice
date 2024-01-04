@@ -62,6 +62,7 @@ on:
   push:
     branches: [ "main" ]
     paths:
+      - .github/workflows/google-gke-prod.yaml
       - config/**
       - src/**
 

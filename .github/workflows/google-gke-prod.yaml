@@ -133,7 +133,7 @@ jobs:
               --set fullnameOverride=${{ env.GKE_APP_NAME }} \
               --set configMap.GSA_DB_NAME=${{ vars.GSA_DB_NAME }} \
               --set configMap.GSA_DB_USER=${{ vars.GSA_DB_USER }} \
-              --set configMap.GSA_DB_HOST=${{ vars.GSA_DB_HOST | quote }} \
-              --set configMap.GSA_DB_PORT=${{ vars.GSA_DB_PORT | quote }} \
+              --set-string configMap.GSA_DB_HOST=${{ vars.GSA_DB_HOST }} \
+              --set-string configMap.GSA_DB_PORT=${{ vars.GSA_DB_PORT }} \
               --set secrets.GSA_DB_PW=$ENCODED_GSA_DB_PW \
               ${{ env.GKE_APP_NAME }} --values=./helm/production.yaml ./helm

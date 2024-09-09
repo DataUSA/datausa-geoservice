@@ -116,6 +116,7 @@ jobs:
       # Transform GitHub secrets to base64 encoded
       - name: Set encoded secret values
         run: |
+          echo "ENCODED_GSA_DB_HOST=$(echo -n "${{ secrets.GSA_DB_HOST }}" | base64 | tr -d '\n')" >> $GITHUB_ENV
           echo "ENCODED_GSA_DB_PW=$(echo -n "${{ secrets.GSA_DB_PW }}" | base64 | tr -d '\n')" >> $GITHUB_ENV
 
       # Install Helm chart
@@ -133,7 +134,7 @@ jobs:
               --set fullnameOverride=${{ env.GKE_APP_NAME }} \
               --set configMap.GSA_DB_NAME=${{ vars.GSA_DB_NAME }} \
               --set configMap.GSA_DB_USER=${{ vars.GSA_DB_USER }} \
-              --set-string configMap.GSA_DB_HOST=${{ vars.GSA_DB_HOST }} \
               --set-string configMap.GSA_DB_PORT=${{ vars.GSA_DB_PORT }} \
+              --set secrets.GSA_DB_HOST=$ENCODED_GSA_DB_HOST \
               --set secrets.GSA_DB_PW=$ENCODED_GSA_DB_PW \
               ${{ env.GKE_APP_NAME }} --values=./helm/production.yaml ./helm

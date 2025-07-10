@@ -1,0 +1,118 @@
+name: "[PROD] Deploy to GCE"
+
+on:
+  push:
+    branches: [ "main" ]
+          
+env:
+  GCP_PROJECT_ID: ${{ vars.GCP_PROJECT_ID }}
+  GCP_ARTIFACT_REGISTRY_NAME: ${{ vars.GCP_ARTIFACT_REGISTRY_NAME }}
+  GCP_ARTIFACT_REGISTRY_LOCATION: ${{ vars.GCP_ARTIFACT_REGISTRY_LOCATION }}
+  GCP_IMAGE_NAME: ${{ vars.GCP_IMAGE_NAME }}
+  GCP_SSH_PRIVATE_KEY: ${{ secrets.GCP_SSH_PRIVATE_KEY }}
+  GCP_VM_IP: ${{ vars.GCP_VM_IP }}
+  GCP_VM_USER: ${{ secrets.GCP_VM_USER }}
+  GSA_DB_HOST: ${{ secrets.GSA_DB_HOST }}
+  GSA_DB_PW: ${{ secrets.GSA_DB_PW }}
+  GSA_DB_NAME: ${{ vars.GSA_DB_NAME }}
+  GSA_DB_PORT: ${{ vars.GSA_DB_PORT }}
+  GSA_DB_USER: ${{ vars.GSA_DB_USER }}
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    environment: production
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      # Authentication via credentials json
+      - name: Google Auth
+        id: auth
+        uses: google-github-actions/auth@v2
+        with:
+          project_id: ${{ env.GCP_PROJECT_ID }}
+          credentials_json: ${{ secrets.GCP_SA_KEY }}
+      
+      # Install Cloud SDK
+      - name: Set up Cloud SDK
+        uses: google-github-actions/setup-gcloud@v1
+        with:
+          install_components: beta
+
+      # Build image on Google Cloud Artifact Registry
+      - name: Build Docker Image
+        run: |-
+          export DOCKER_BUILDKIT=1
+          gcloud builds submit \
+            --quiet \
+            --timeout=40m \
+            --config=cloudbuild.yml \
+            --substitutions=_GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }},_GCP_ARTIFACT_REGISTRY_NAME=${{ env.GCP_ARTIFACT_REGISTRY_NAME }},_GCP_IMAGE_NAME=${{ env.GCP_IMAGE_NAME }},_GCP_ARTIFACT_REGISTRY_LOCATION=${{ env.GCP_ARTIFACT_REGISTRY_LOCATION }},_GCP_IMAGE_TAG=${{ github.sha }},_GCP_IMAGE_ENVIRONMENT=${{ env.GCP_IMAGE_NAME }} \
+            --suppress-logs
+      # Uncomment for adding the latest tag to the latest image created
+      - name: Add 'Latest' Tag to Development Environments
+        run: |-
+          gcloud beta artifacts docker tags add \
+            --quiet \
+            ${{ env.GCP_ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_NAME }}/${{ env.GCP_IMAGE_NAME }}:${{ github.sha }} \
+            ${{ env.GCP_ARTIFACT_REGISTRY_LOCATION }}-docker.pkg.dev/${{ env.GCP_PROJECT_ID }}/${{ env.GCP_ARTIFACT_REGISTRY_NAME }}/${{ env.GCP_IMAGE_NAME }}:latest
+
+  deploy:
+    needs: build
+    environment: production
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout code
+      uses: actions/checkout@v4
+
+    - name: Authenticate with Google Cloud
+      uses: google-github-actions/auth@v2
+      with:
+        credentials_json: ${{ secrets.GCP_SA_KEY }}
+
+    - name: Deploy to Compute Engine
+      id: compute-ssh
+      run: |
+          # Setup SSH credentials
+          SSH_DIR=~/.ssh
+          mkdir -p $SSH_DIR
+          echo "${{ secrets.GCP_SSH_PRIVATE_KEY }}" > $SSH_DIR/id_rsa
+          chmod 600 $SSH_DIR/id_rsa
+          ssh-keyscan -H ${{ vars.GCP_VM_IP }} >> $SSH_DIR/known_hosts
+
+          # Define remote path
+          REMOTE_PATH="/home/${{ secrets.GCP_VM_USER }}/${{ env.GCP_ARTIFACT_REGISTRY_NAME }}"
+
+          # Create remote directory and transfer files in one SSH session
+          echo "Creating remote path"
+          ssh -i $SSH_DIR/id_rsa ${{ secrets.GCP_VM_USER }}@${{ vars.GCP_VM_IP }} "mkdir -p $REMOTE_PATH"
+          echo "Sending files"
+          scp -i $SSH_DIR/id_rsa compose.yaml deploy_to_vm.sh ${{ secrets.GCP_VM_USER }}@${{ vars.GCP_VM_IP }}:$REMOTE_PATH
+
+          echo "Deploy"
+          # SSH into VM and execute deployment
+          ssh -i $SSH_DIR/id_rsa ${{ secrets.GCP_VM_USER }}@${{ vars.GCP_VM_IP }} 'bash -s' << 'ENDSSH'
+
+          cd "/home/${{ secrets.GCP_VM_USER }}/${{ env.GCP_ARTIFACT_REGISTRY_NAME }}"
+
+          # Reset and create .env.gcp file
+          echo "Creating .env.gcp file"
+          cat << EOF > .env.gcp
+          GCP_PROJECT_ID=${{ env.GCP_PROJECT_ID }}
+          GCP_IMAGE_NAME=${{ env.GCP_IMAGE_NAME }}
+          GCP_IMAGE_TAG=${{ github.sha }}
+          GCP_ARTIFACT_REGISTRY_NAME=${{ env.GCP_ARTIFACT_REGISTRY_NAME }}
+          GCP_ARTIFACT_REGISTRY_LOCATION=${{ env.GCP_ARTIFACT_REGISTRY_LOCATION }}
+          GIT_HASH=${{ github.sha }}
+          GSA_DB_HOST=${{ env.GSA_DB_HOST }}
+          GSA_DB_PW=${{ env.GSA_DB_PW }}
+          GSA_DB_NAME=${{ env.GSA_DB_NAME }}
+          GSA_DB_PORT=${{ env.GSA_DB_PORT }}
+          GSA_DB_USER=${{ env.GSA_DB_USER }}
+          EOF
+
+          bash ./deploy_to_vm.sh
+
+          ENDSSH
